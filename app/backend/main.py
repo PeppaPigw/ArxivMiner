@@ -1,6 +1,10 @@
 """
 Main FastAPI application.
 """
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -9,12 +13,12 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from .db.models import init_db
-from .config import get_config
-from .jobs.scheduler import setup_scheduled_jobs, shutdown_scheduler
-from .api.papers import router as papers_router
-from .api.tags import router as tags_router
-from .api.admin import router as admin_router
+from app.backend.db.models import init_db
+from app.backend.config import get_config
+from app.backend.jobs.scheduler import setup_scheduled_jobs, shutdown_scheduler
+from app.backend.api.papers import router as papers_router
+from app.backend.api.tags import router as tags_router
+from app.backend.api.admin import router as admin_router
 
 # Configure logging
 logging.basicConfig(

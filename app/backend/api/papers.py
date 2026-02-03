@@ -1,6 +1,10 @@
 """
 Paper API endpoints.
 """
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 import json
 import logging
 from datetime import datetime
@@ -9,10 +13,10 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query, Depends, Header
 from sqlalchemy.orm import Session
 
-from ..db.models import Paper, UserState, Tag, PaperTag, get_session
-from ..services.translator import get_translator
-from ..services.tagger import get_tagger
-from ..config import get_config
+from app.backend.db.models import Paper, UserState, Tag, PaperTag, get_session
+from app.backend.services.translator import get_translator
+from app.backend.services.tagger import get_tagger
+from app.backend.config import get_config
 
 logger = logging.getLogger(__name__)
 

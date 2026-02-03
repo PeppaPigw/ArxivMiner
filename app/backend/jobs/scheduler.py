@@ -1,16 +1,20 @@
 """
 Background job scheduler.
 """
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 import logging
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from .services.arxiv_client import ArxivClient
-from .services.translator import get_translator
-from .services.tagger import get_tagger
-from .db.models import Paper, Tag, PaperTag, get_session
-from .config import get_config
+from app.backend.services.arxiv_client import ArxivClient
+from app.backend.services.translator import get_translator
+from app.backend.services.tagger import get_tagger
+from app.backend.db.models import Paper, Tag, PaperTag, get_session
+from app.backend.config import get_config
 import json
 
 logger = logging.getLogger(__name__)

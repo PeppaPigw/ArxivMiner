@@ -1,6 +1,10 @@
 """
 Tags API endpoints.
 """
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 import json
 from typing import Any, Dict, List
 
@@ -8,7 +12,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from ..db.models import Paper, Tag, PaperTag, get_session
+from app.backend.db.models import Paper, Tag, PaperTag, get_session
 
 router = APIRouter(prefix="/api/tags", tags=["tags"])
 
