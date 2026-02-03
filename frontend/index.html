@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArxivMiner - Daily Papers</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1 class="logo">📚 ArxivMiner</h1>
+            <nav class="nav">
+                <a href="#/" class="nav-link active" data-page="list">论文列表</a>
+                <a href="#/admin" class="nav-link" data-page="admin">管理面板</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <!-- List Page -->
+        <section id="page-list" class="page active">
+            <div class="filters">
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="搜索标题、摘要..." />
+                    <button id="search-btn">搜索</button>
+                </div>
+                
+                <div class="filter-row">
+                    <select id="category-filter">
+                        <option value="">所有分类</option>
+                        <option value="cs.AI">cs.AI</option>
+                        <option value="cs.CL">cs.CL</option>
+                        <option value="cs.LG">cs.LG</option>
+                        <option value="cs.CV">cs.CV</option>
+                        <option value="stat.ML">stat.ML</option>
+                    </select>
+                    
+                    <select id="sort-filter">
+                        <option value="published">按发布时间</option>
+                        <option value="updated">按更新日期</option>
+                    </select>
+                    
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="hide-hidden" checked>
+                        隐藏已隐藏
+                    </label>
+                </div>
+                
+                <div class="tag-cloud" id="tag-cloud">
+                    <!-- Tags loaded dynamically -->
+                </div>
+            </div>
+            
+            <div class="papers-header">
+                <span id="papers-count">加载中...</span>
+                <button id="refresh-btn">刷新</button>
+            </div>
+            
+            <div class="papers-list" id="papers-list">
+                <!-- Papers loaded dynamically -->
+            </div>
+            
+            <div class="pagination" id="pagination">
+                <button id="prev-page" disabled>上一页</button>
+                <span id="page-info">1 / 1</span>
+                <button id="next-page">下一页</button>
+            </div>
+        </section>
+
+        <!-- Detail Page -->
+        <section id="page-detail" class="page">
+            <button class="back-btn" id="back-btn">← 返回列表</button>
+            
+            <div class="paper-detail" id="paper-detail">
+                <!-- Paper detail loaded dynamically -->
+            </div>
+        </section>
+
+        <!-- Admin Page -->
+        <section id="page-admin" class="page">
+            <h2>管理面板</h2>
+            
+            <div class="admin-stats" id="admin-stats">
+                <!-- Stats loaded dynamically -->
+            </div>
+            
+            <div class="admin-actions">
+                <button id="fetch-btn" class="admin-btn">立即抓取</button>
+                <button id="retranslate-btn" class="admin-btn">重新翻译失败项</button>
+                <button id="retag-btn" class="admin-btn">重新标记失败项</button>
+                <button id="process-pending-btn" class="admin-btn">处理所有待处理</button>
+            </div>
+            
+            <div class="admin-logs" id="admin-logs">
+                <h3>操作日志</h3>
+                <div class="log-content" id="log-content"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

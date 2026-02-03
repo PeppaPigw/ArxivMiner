@@ -1,0 +1,29 @@
+# ArxivMiner Configuration
+
+# arXiv Settings
+arxiv_categories:
+  - cs.AI
+  - cs.CL
+  - stat.ML
+
+fetch_window_hours: 24
+fetch_mode: published  # published or updated
+
+# Database
+database_url: sqlite:///./data/arxivminer.db
+
+# DeepL Translation API
+deepl_api_key: qUtnXNBSbku7YcVL3-n4QQUKpN8Z7SU3EEuhj-NS9KI
+deepl_api_url: https://api-free.deepl.com/v2/translate
+
+# Tagging Settings
+tags_per_paper: 8
+tagger_provider: keyword  # keyword or llm
+
+# App Settings
+app_host: 0.0.0.0
+app_port: 8000
+admin_token: admin_secret_token
+
+# Logging
+log_level: INFO
