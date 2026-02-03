@@ -9,7 +9,10 @@
 <body>
     <header class="header">
         <div class="header-content">
-            <h1 class="logo">📚 ArxivMiner</h1>
+            <a href="#/" class="logo">
+                <div class="logo-icon">📚</div>
+                <span>ArxivMiner</span>
+            </a>
             <nav class="nav">
                 <a href="#/" class="nav-link active" data-page="list">论文列表</a>
                 <a href="#/admin" class="nav-link" data-page="admin">管理面板</a>
@@ -20,15 +23,15 @@
     <main class="main">
         <!-- List Page -->
         <section id="page-list" class="page active">
-            <div class="filters">
-                <div class="search-box">
-                    <input type="text" id="search-input" placeholder="搜索标题、摘要..." />
-                    <button id="search-btn">搜索</button>
+            <div class="filter-bar">
+                <div class="search-row">
+                    <input type="text" id="search-input" class="search-input" placeholder="🔍 搜索标题、摘要、作者..." />
+                    <button id="search-btn" class="search-btn">搜索</button>
                 </div>
                 
                 <div class="filter-row">
-                    <select id="category-filter">
-                        <option value="">所有分类</option>
+                    <select id="category-filter" class="filter-select">
+                        <option value="">📁 所有分类</option>
                         <option value="cs.AI">cs.AI</option>
                         <option value="cs.CL">cs.CL</option>
                         <option value="cs.LG">cs.LG</option>
@@ -36,9 +39,9 @@
                         <option value="stat.ML">stat.ML</option>
                     </select>
                     
-                    <select id="sort-filter">
-                        <option value="published">按发布时间</option>
-                        <option value="updated">按更新日期</option>
+                    <select id="sort-filter" class="filter-select">
+                        <option value="published">📅 按发布时间</option>
+                        <option value="updated">🔄 按更新日期</option>
                     </select>
                     
                     <label class="checkbox-label">
@@ -79,17 +82,17 @@
 
         <!-- Admin Page -->
         <section id="page-admin" class="page">
-            <h2>管理面板</h2>
+            <h2 style="margin-bottom: 24px; font-size: 1.5rem;">⚙️ 管理面板</h2>
             
             <div class="admin-stats" id="admin-stats">
                 <!-- Stats loaded dynamically -->
             </div>
             
             <div class="admin-actions">
-                <button id="fetch-btn" class="admin-btn">立即抓取</button>
-                <button id="retranslate-btn" class="admin-btn">重新翻译失败项</button>
-                <button id="retag-btn" class="admin-btn">重新标记失败项</button>
-                <button id="process-pending-btn" class="admin-btn">处理所有待处理</button>
+                <button id="fetch-btn" class="admin-btn">📥 立即抓取</button>
+                <button id="retranslate-btn" class="admin-btn">🔄 重试翻译</button>
+                <button id="retag-btn" class="admin-btn">🏷️ 重试标记</button>
+                <button id="process-pending-btn" class="admin-btn">✨ 处理全部</button>
             </div>
             
             <div class="admin-logs" id="admin-logs">
@@ -98,6 +101,9 @@
             </div>
         </section>
     </main>
+
+    <!-- Toast Container -->
+    <div class="toast-container"></div>
 
     <script src="/static/js/app.js"></script>
 </body>
