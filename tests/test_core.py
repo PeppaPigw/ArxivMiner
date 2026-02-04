@@ -549,5 +549,186 @@ def create_mock_paper(id, **kwargs):
     return paper
 
 
+class TestCSPapersClient:
+    """Test cspapers.org client."""
+    
+    def test_cspapers_client_init(self):
+        """Test cspapers client initialization."""
+        from app.backend.services.cspapers import CSPapersClient
+        
+        client = CSPapersClient()
+        assert client.config is not None
+        assert client.tagger is not None
+        print("  ✓ cspapers client initialized")
+    
+    def test_venue_mapping(self):
+        """Test venue to category mapping."""
+        from app.backend.services.cspapers import CSPapersClient
+        
+        client = CSPapersClient()
+        
+        # Test common venues
+        assert "cs.AI" in client._venue_to_categories("AAAI")
+        assert "cs.AI" in client._venue_to_categories("IJCAI")
+        assert "cs.LG" in client._venue_to_categories("ICLR")
+        assert "cs.LG" in client._venue_to_categories("NeurIPS")
+        assert "cs.CV" in client._venue_to_categories("CVPR")
+        assert "cs.CV" in client._venue_to_categories("ICCV")
+        assert "cs.CL" in client._venue_to_categories("ACL")
+        assert "cs.CL" in client._venue_to_categories("EMNLP")
+        assert "cs.OS" in client._venue_to_categories("OSDI")
+        assert "cs.OS" in client._venue_to_categories("SOSP")
+        assert "cs.PL" in client._venue_to_categories("PLDI")
+        assert "cs.DB" in client._venue_to_categories("SIGMOD")
+        assert "cs.CR" in client._venue_to_categories("CRYPTO")
+        assert "cs.HC" in client._venue_to_categories("CHI")
+        print("  ✓ Venue to category mapping works")
+    
+    def test_sample_papers(self):
+        """Test sample paper collection."""
+        from app.backend.services.cspapers import CSPapersClient
+        
+        client = CSPapersClient()
+        papers = client._get_sample_papers()
+        
+        assert len(papers) == 5
+        assert papers[0]["title"] == "Attention Is All You Need"
+        assert papers[0]["venue"] == "NeurIPS"
+        assert papers[0]["citation_count"] == 120000
+        assert "Ashish Vaswani" in papers[0]["authors"]
+        print(f"  ✓ Sample papers loaded: {len(papers)} papers")
+    
+    def test_convert_to_arxiv_format(self):
+        """Test converting cspapers format to arxivMiner format."""
+        from app.backend.services.cspapers import CSPapersClient
+        
+        client = CSPapersClient()
+        
+        paper = {
+            "title": "Test Paper",
+            "authors": ["Author One", "Author Two"],
+            "year": 2023,
+            "venue": "NeurIPS",
+            "citation_count": 100,
+            "url": "https://arxiv.org/abs/1234.56789",
+            "abstract": "Test abstract",
+            "paper_id": "test-123",
+        }
+        
+        arxiv_paper = client.convert_to_arxiv_format(paper)
+        
+        assert arxiv_paper["title"] == "Test Paper"
+        assert arxiv_paper["authors_json"] == '["Author One", "Author Two"]'
+        assert arxiv_paper["primary_category"] == "cs.LG"
+        assert arxiv_paper["view_count"] == 100
+        assert "cs.LG" in arxiv_paper["categories_json"]
+        print("  ✓ Format conversion works")
+    
+    def test_build_query_url(self):
+        """Test building cspapers.org query URL."""
+        from app.backend.services.cspapers import CSPapersClient
+        
+        client = CSPapersClient()
+        
+        url = client.build_query_url(
+            venues=["NeurIPS", "ICML"],
+            year_from=2020,
+            year_to=2024,
+            order_by="score",
+            skip=50,
+        )
+        
+        assert "venue=NeurIPS" in url
+        assert "venue=ICML" in url
+        assert "yearFrom=2020" in url
+        assert "yearTo=2024" in url
+        assert "skip=50" in url
+        print("  ✓ Query URL builder works")
+    
+    def test_venue_categories(self):
+        """Test venue categories structure."""
+        from app.backend.services.cspapers import VENUES
+        
+        # Check categories exist
+        assert "AI" in VENUES
+        assert "ML" in VENUES
+        assert "CV" in VENUES
+        assert "NLP" in VENUES
+        
+        # Check venues in categories
+        assert "NeurIPS" in VENUES["ML"]
+        assert "CVPR" in VENUES["CV"]
+        assert "ACL" in VENUES["NLP"]
+        
+        print(f"  ✓ Venue categories loaded: {len(VENUES)} categories")
+    
+    def test_get_top_papers_by_venue(self):
+        """Test getting top papers for a venue."""
+        from app.backend.services.cspapers import CSPapersClient
+        
+        client = CSPapersClient()
+        papers = client.get_top_papers_by_venue(
+            venue="NeurIPS",
+            year_from=2020,
+            year_to=2024,
+            limit=5,
+        )
+        
+        assert len(papers) <= 5
+        # All papers should be from NeurIPS
+        for paper in papers:
+            if paper.get("venue"):
+                assert "NeurIPS" in paper["venue"] or paper["venue"] == "NeurIPS"
+        
+        print(f"  ✓ Top papers by venue works: {len(papers)} papers")
+    
+    def test_get_venue_statistics(self):
+        """Test getting venue statistics."""
+        from app.backend.services.cspapers import CSPapersClient
+        
+        client = CSPapersClient()
+        stats = client.get_venue_statistics()
+        
+        assert isinstance(stats, dict)
+        assert "ML" in stats
+        assert "CV" in stats
+        
+        ml_stats = stats["ML"]
+        assert "venues" in ml_stats
+        assert "paper_count" in ml_stats
+        assert "total_citations" in ml_stats
+        
+        print(f"  ✓ Venue statistics works: {len(stats)} categories")
+
+
+class TestCSPapersAPI:
+    """Test cspapers API endpoints."""
+    
+    def test_cspapers_router_exists(self):
+        """Test that cspapers router can be imported."""
+        from app.backend.api.cspapers import router
+        assert router is not None
+        assert router.prefix == "/api/cspapers"
+        print("  ✓ cspapers router exists")
+    
+    def test_cspapers_endpoints(self):
+        """Test cspapers endpoint definitions."""
+        from app.backend.api.cspapers import router
+        
+        routes = [r.path for r in router.routes]
+        
+        assert "/api/cspapers" in routes
+        assert "/api/cspapers/venues" in routes
+        assert "/api/cspapers/venue/{venue}" in routes
+        assert "/api/cspapers/category/{category}" in routes
+        assert "/api/cspapers/import" in routes
+        assert "/api/cspapers/trending" in routes
+        assert "/api/cspapers/statistics" in routes
+        assert "/api/cspapers/search" in routes
+        assert "/api/cspapers/leaderboard" in routes
+        
+        print(f"  ✓ cspapers endpoints loaded: {len(routes)} routes")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

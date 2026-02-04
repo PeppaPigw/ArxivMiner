@@ -386,6 +386,109 @@ def test_rss_feed():
     
     return True
 
+
+def test_cspapers_client():
+    """Test cspapers.org client."""
+    print("\nTesting cspapers.org client...")
+    from app.backend.services.cspapers import CSPapersClient, VENUES
+    
+    client = CSPapersClient()
+    assert client.config is not None
+    print("  ✓ cspapers client initialized")
+    
+    # Test venue mapping
+    assert "cs.AI" in client._venue_to_categories("AAAI")
+    assert "cs.LG" in client._venue_to_categories("NeurIPS")
+    assert "cs.CV" in client._venue_to_categories("CVPR")
+    assert "cs.CL" in client._venue_to_categories("ACL")
+    print("  ✓ Venue to category mapping works")
+    
+    # Test sample papers
+    papers = client._get_sample_papers()
+    assert len(papers) == 5
+    assert papers[0]["title"] == "Attention Is All You Need"
+    assert papers[0]["citation_count"] == 120000
+    print(f"  ✓ Sample papers loaded: {len(papers)} papers")
+    
+    # Test format conversion
+    paper = {
+        "title": "Test Paper",
+        "authors": ["Author One", "Author Two"],
+        "year": 2023,
+        "venue": "NeurIPS",
+        "citation_count": 100,
+        "url": "https://arxiv.org/abs/1234.56789",
+        "abstract": "Test abstract",
+        "paper_id": "test-123",
+    }
+    
+    arxiv_paper = client.convert_to_arxiv_format(paper)
+    assert arxiv_paper["title"] == "Test Paper"
+    assert arxiv_paper["primary_category"] == "cs.LG"
+    assert arxiv_paper["view_count"] == 100
+    print("  ✓ Format conversion works")
+    
+    # Test query URL builder
+    url = client.build_query_url(
+        venues=["NeurIPS", "ICML"],
+        year_from=2020,
+        year_to=2024,
+        skip=50,
+    )
+    assert "venue=NeurIPS" in url
+    assert "yearFrom=2020" in url
+    print("  ✓ Query URL builder works")
+    
+    # Test venue categories
+    assert len(VENUES) > 0
+    assert "ML" in VENUES
+    assert "CV" in VENUES
+    assert "NLP" in VENUES
+    print(f"  ✓ Venue categories loaded: {len(VENUES)} categories")
+    
+    # Test top papers by venue
+    top_papers = client.get_top_papers_by_venue(
+        venue="NeurIPS",
+        year_from=2020,
+        year_to=2024,
+        limit=5,
+    )
+    assert len(top_papers) <= 5
+    print(f"  ✓ Top papers by venue works: {len(top_papers)} papers")
+    
+    # Test venue statistics
+    stats = client.get_venue_statistics()
+    assert "ML" in stats
+    assert "CV" in stats
+    print(f"  ✓ Venue statistics works: {len(stats)} categories")
+    
+    return True
+
+
+def test_cspapers_api():
+    """Test cspapers API endpoints."""
+    print("\nTesting cspapers API endpoints...")
+    from app.backend.api.cspapers import router
+    
+    assert router is not None
+    assert router.prefix == "/api/cspapers"
+    print("  ✓ cspapers router exists")
+    
+    routes = [r.path for r in router.routes]
+    
+    assert "/api/cspapers" in routes
+    assert "/api/cspapers/venues" in routes
+    assert "/api/cspapers/venue/{venue}" in routes
+    assert "/api/cspapers/category/{category}" in routes
+    assert "/api/cspapers/import" in routes
+    assert "/api/cspapers/trending" in routes
+    assert "/api/cspapers/statistics" in routes
+    assert "/api/cspapers/search" in routes
+    assert "/api/cspapers/leaderboard" in routes
+    print(f"  ✓ cspapers endpoints loaded: {len(routes)} routes")
+    
+    return True
+
 def main():
     """Run all tests."""
     print("=" * 60)
@@ -402,6 +505,8 @@ def main():
         ("arXiv Client", test_arxiv_client),
         ("API Routes", test_api_routes),
         ("RSS Feed", test_rss_feed),
+        ("CSPapers Client", test_cspapers_client),
+        ("CSPapers API", test_cspapers_api),
     ]
     
     results = []
@@ -444,6 +549,7 @@ def main():
         "• Reading lists/collections",
         "• Author tracking and following",
         "• RSS feeds for papers and categories",
+        "• Top CS papers from cspapers.org (50+ conferences)",
         "• BibTeX/JSON export functionality",
         "• Trending papers analytics",
         "• Enhanced filtering (by author, date range)",

@@ -22,6 +22,7 @@ from app.backend.api.admin import router as admin_router
 from app.backend.api.lists import router as lists_router
 from app.backend.api.authors import router as authors_router
 from app.backend.api.rss import router as rss_router
+from app.backend.api.cspapers import router as cspapers_router
 
 # Configure logging
 logging.basicConfig(
@@ -76,6 +77,7 @@ app.include_router(admin_router)
 app.include_router(lists_router)
 app.include_router(authors_router)
 app.include_router(rss_router)
+app.include_router(cspapers_router)
 
 
 # Mount static frontend
@@ -99,6 +101,7 @@ async def root():
             "lists": "/api/lists",
             "authors": "/api/authors",
             "rss": "/api/rss",
+            "cspapers": "/api/cspapers",
         },
         "features": [
             "Paper search and filtering",
@@ -109,6 +112,7 @@ async def root():
             "Reading lists/collections",
             "Author tracking",
             "RSS feeds",
+            "Top CS papers from cspapers.org",
             "BibTeX/JSON export",
         ],
     }
