@@ -34,10 +34,17 @@ class Config(BaseModel):
     embedding_model: str = "all-MiniLM-L6-v2"
     embedding_api_key: str = ""
     
+    # LLM for summarization
+    llm_provider: str = "none"  # none, openai, ollama
+    llm_model: str = "gpt-3.5-turbo"
+    openai_api_key: str = ""
+    ollama_url: str = "http://localhost:11434"
+    
     # App Settings
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     admin_token: str = "admin_secret_token"
+    secret_key: str = "your-secret-key-change-in-production"
     
     # User Preferences
     default_page_size: int = 20
@@ -49,6 +56,17 @@ class Config(BaseModel):
     # Rate Limiting
     rate_limit_per_minute: int = 60
     rate_limit_per_hour: int = 1000
+    
+    # SMTP for email notifications
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = "noreply@arxivminer.com"
+    
+    # Slack/Discord webhooks (comma-separated for multiple)
+    slack_webhooks: str = ""
+    discord_webhooks: str = ""
     
     class Config:
         arbitrary_types_allowed = True

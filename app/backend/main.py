@@ -23,6 +23,10 @@ from app.backend.api.lists import router as lists_router
 from app.backend.api.authors import router as authors_router
 from app.backend.api.rss import router as rss_router
 from app.backend.api.cspapers import router as cspapers_router
+from app.backend.api.summarize import router as summarize_router
+from app.backend.api.trends import router as trends_router
+from app.backend.api.notifications import router as notifications_router
+from app.backend.api.auth import router as auth_router
 
 # Configure logging
 logging.basicConfig(
@@ -78,6 +82,10 @@ app.include_router(lists_router)
 app.include_router(authors_router)
 app.include_router(rss_router)
 app.include_router(cspapers_router)
+app.include_router(summarize_router)
+app.include_router(trends_router)
+app.include_router(notifications_router)
+app.include_router(auth_router)
 
 
 # Mount static frontend
@@ -102,6 +110,10 @@ async def root():
             "authors": "/api/authors",
             "rss": "/api/rss",
             "cspapers": "/api/cspapers",
+            "summarize": "/api/summarize",
+            "trends": "/api/trends",
+            "notifications": "/api/notifications",
+            "auth": "/api/auth",
         },
         "features": [
             "Paper search and filtering",
@@ -113,6 +125,13 @@ async def root():
             "Author tracking",
             "RSS feeds",
             "Top CS papers from cspapers.org",
+            "AI paper summarization (brief, comprehensive, TL;DR)",
+            "Research trend analysis",
+            "Topic modeling and discovery",
+            "User authentication & teams",
+            "Multi-channel notifications (Slack, Discord, Email)",
+            "Citation network analysis",
+            "PDF text extraction",
             "BibTeX/JSON export",
         ],
     }

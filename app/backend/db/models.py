@@ -17,6 +17,7 @@ from sqlalchemy import (
     Text,
     create_engine,
     Index,
+    UniqueConstraint,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
@@ -258,6 +259,203 @@ class SearchHistory(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     __table_args__ = (Index("idx_search_query", "query"),)
+
+
+# ============ User Authentication Models ============
+
+class User(Base):
+    """User model for authentication."""
+    
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    email = Column(String(100), unique=True, nullable=False, index=True)
+    password_hash = Column(String(64), nullable=False)
+    display_name = Column(String(100), nullable=True)
+    bio = Column(Text, nullable=True)
+    avatar_url = Column(String(500), nullable=True)
+    api_token = Column(String(64), unique=True, nullable=True)
+    last_login = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Team(Base):
+    """Team model for collaboration."""
+    
+    __tablename__ = "teams"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    is_public = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class TeamMember(Base):
+    """Team membership."""
+    
+    __tablename__ = "team_members"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    role = Column(String(20), default="member")  # admin, member, viewer
+    joined_at = Column(DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        Index("idx_team_user", "team_id", "user_id"),
+        UniqueConstraint("team_id", "user_id", name="uq_team_user"),
+    )
+
+
+class UserSession(Base):
+    """User session tokens."""
+    
+    __tablename__ = "user_sessions"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String(64), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (Index("idx_user_token", "user_id", "token"),)
+
+
+# ============ Citation Models ============
+
+class Citation(Base):
+    """Paper citation relationships."""
+    
+    __tablename__ = "citations"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    citing_paper_id = Column(Integer, ForeignKey("papers.id"), nullable=False)
+    cited_paper_id = Column(Integer, ForeignKey("papers.id"), nullable=False)
+    citation_type = Column(String(20), default="citations")  # citations, references, related
+    confidence = Column(Float, default=1.0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        Index("idx_citing", "citing_paper_id"),
+        Index("idx_cited", "cited_paper_id"),
+        UniqueConstraint("citing_paper_id", "cited_paper_id", name="uq_citation"),
+    )
+
+
+# ============ Topic Models ============
+
+class Topic(Base):
+    """Research topics for clustering."""
+    
+    __tablename__ = "topics"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    keywords_json = Column(Text, nullable=False)  # JSON array of keywords
+    description = Column(Text, nullable=True)
+    parent_topic_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class PaperTopic(Base):
+    """Paper-Topic many-to-many relationship."""
+    
+    __tablename__ = "paper_topics"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    paper_id = Column(Integer, ForeignKey("papers.id"), nullable=False)
+    topic_id = Column(Integer, ForeignKey("topics.id"), nullable=False)
+    confidence = Column(Float, default=0.5)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (Index("idx_paper_topic", "paper_id", "topic_id"),)
+
+
+# ============ Paper Summary Models ============
+
+class PaperSummary(Base):
+    """AI-generated paper summaries."""
+    
+    __tablename__ = "paper_summaries"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    paper_id = Column(Integer, ForeignKey("papers.id"), nullable=False)
+    summary_type = Column(String(20), nullable=False)  # brief, comprehensive, key_points, tldr
+    summary_text = Column(Text, nullable=False)
+    model_used = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        Index("idx_paper_summary_type", "paper_id", "summary_type"),
+        UniqueConstraint("paper_id", "summary_type", name="uq_paper_summary"),
+    )
+
+
+# ============ Notification Models ============
+
+class Notification(Base):
+    """User notifications."""
+    
+    __tablename__ = "notifications"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(200), nullable=False)
+    message = Column(Text, nullable=True)
+    type = Column(String(20), default="info")  # info, warning, success, error
+    link = Column(String(500), nullable=True)
+    metadata_json = Column(Text, nullable=True)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class UserNotificationPreference(Base):
+    """User notification preferences."""
+    
+    __tablename__ = "user_notification_preferences"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
+    email_enabled = Column(Boolean, default=True)
+    slack_enabled = Column(Boolean, default=False)
+    slack_webhook_url = Column(String(500), nullable=True)
+    discord_enabled = Column(Boolean, default=False)
+    discord_webhook_url = Column(String(500), nullable=True)
+    new_papers = Column(Boolean, default=True)
+    followed_authors = Column(Boolean, default=True)
+    trending_papers = Column(Boolean, default=False)
+    weekly_digest = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ============ Annotation Models ============
+
+class PaperAnnotation(Base):
+    """User annotations on papers."""
+    
+    __tablename__ = "paper_annotations"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    paper_id = Column(Integer, ForeignKey("papers.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    annotation_type = Column(String(20), default="highlight")  # highlight, note, bookmark
+    content = Column(Text, nullable=True)
+    page_number = Column(Integer, nullable=True)
+    position_json = Column(Text, nullable=True)  # JSON for highlight position
+    color = Column(String(20), default="#FFFF00")
+    is_public = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    __table_args__ = (Index("idx_annotation_paper_user", "paper_id", "user_id"),)
 
 
 # Database engine and session
