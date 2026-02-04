@@ -16,6 +16,7 @@ class Config(BaseModel):
     arxiv_categories: List[str] = ["cs.AI", "cs.CL", "stat.ML"]
     fetch_window_hours: int = 24
     fetch_mode: str = "published"
+    max_papers_per_fetch: int = 100
     
     # Database
     database_url: str = "sqlite:///./data/arxivminer.db"
@@ -28,13 +29,26 @@ class Config(BaseModel):
     tags_per_paper: int = 8
     tagger_provider: str = "keyword"
     
+    # Embeddings for semantic search
+    embedding_provider: str = "none"  # none, openai, sentence-transformers
+    embedding_model: str = "all-MiniLM-L6-v2"
+    embedding_api_key: str = ""
+    
     # App Settings
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     admin_token: str = "admin_secret_token"
     
+    # User Preferences
+    default_page_size: int = 20
+    max_page_size: int = 100
+    
     # Logging
     log_level: str = "INFO"
+    
+    # Rate Limiting
+    rate_limit_per_minute: int = 60
+    rate_limit_per_hour: int = 1000
     
     class Config:
         arbitrary_types_allowed = True
@@ -61,6 +75,8 @@ def load_config(config_path: Optional[str] = None) -> Config:
         config_data["deepl_api_key"] = os.environ["DEEPL_API_KEY"]
     if os.environ.get("ADMIN_TOKEN"):
         config_data["admin_token"] = os.environ["ADMIN_TOKEN"]
+    if os.environ.get("OPENAI_API_KEY"):
+        config_data["embedding_api_key"] = os.environ["OPENAI_API_KEY"]
     
     return Config(**config_data)
 
@@ -75,3 +91,9 @@ def get_config() -> Config:
     if _config is None:
         _config = load_config()
     return _config
+
+
+def reset_config():
+    """Reset config (useful for testing)."""
+    global _config
+    _config = None

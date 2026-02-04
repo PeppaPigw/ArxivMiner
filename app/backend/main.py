@@ -19,6 +19,9 @@ from app.backend.jobs.scheduler import setup_scheduled_jobs, shutdown_scheduler
 from app.backend.api.papers import router as papers_router
 from app.backend.api.tags import router as tags_router
 from app.backend.api.admin import router as admin_router
+from app.backend.api.lists import router as lists_router
+from app.backend.api.authors import router as authors_router
+from app.backend.api.rss import router as rss_router
 
 # Configure logging
 logging.basicConfig(
@@ -52,8 +55,8 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(
     title="ArxivMiner",
-    description="Daily arXiv paper collector with Chinese translation and auto-tagging",
-    version="1.0.0",
+    description="Daily arXiv paper collector with Chinese translation, auto-tagging, recommendations, and reading lists",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -70,6 +73,9 @@ app.add_middleware(
 app.include_router(papers_router)
 app.include_router(tags_router)
 app.include_router(admin_router)
+app.include_router(lists_router)
+app.include_router(authors_router)
+app.include_router(rss_router)
 
 
 # Mount static frontend
@@ -83,13 +89,28 @@ async def root():
     """Root endpoint - serve index.html."""
     return {
         "name": "ArxivMiner",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "status": "running",
+        "description": "ArXiv paper collector with translation, tagging, recommendations, and more",
         "endpoints": {
             "papers": "/api/papers",
             "tags": "/api/tags",
             "admin": "/api/admin",
+            "lists": "/api/lists",
+            "authors": "/api/authors",
+            "rss": "/api/rss",
         },
+        "features": [
+            "Paper search and filtering",
+            "Chinese translation via DeepL",
+            "Auto-tagging with keywords",
+            "Semantic similarity search",
+            "Personalized recommendations",
+            "Reading lists/collections",
+            "Author tracking",
+            "RSS feeds",
+            "BibTeX/JSON export",
+        ],
     }
 
 
@@ -97,3 +118,16 @@ async def root():
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+@app.get("/info")
+async def app_info():
+    """Get application information."""
+    config = get_config()
+    return {
+        "name": "ArxivMiner",
+        "version": "2.0.0",
+        "categories": config.arxiv_categories,
+        "embedding_provider": config.embedding_provider,
+        "tagger_provider": config.tagger_provider,
+    }

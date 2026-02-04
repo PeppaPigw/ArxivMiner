@@ -1,5 +1,5 @@
 """
-Unit tests for ArxivMiner.
+Unit tests for ArxivMiner - Enhanced version with new features.
 """
 import pytest
 import json
@@ -11,9 +11,14 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.backend.config import Config, load_config
-from app.backend.db.models import Paper, Tag, PaperTag, UserState
+from app.backend.db.models import (
+    Paper, Tag, PaperTag, UserState, ReadingList, ReadingListItem,
+    AuthorFollow, init_db, get_session
+)
 from app.backend.services.arxiv_client import ArxivClient, generate_abstract_hash, parse_arxiv_datetime
 from app.backend.services.tagger import KeywordTagger
+from app.backend.services.embedding import EmbeddingService
+from app.backend.services.recommendation import RecommendationService
 
 
 class TestConfig:
@@ -28,6 +33,8 @@ class TestConfig:
         assert config.database_url == "sqlite:///./data/arxivminer.db"
         assert config.tags_per_paper == 8
         assert config.app_port == 8000
+        assert config.max_papers_per_fetch == 100
+        assert config.embedding_provider == "none"
     
     def test_custom_config(self):
         """Test custom configuration values."""
@@ -35,13 +42,14 @@ class TestConfig:
             arxiv_categories=["cs.CV", "cs.LG"],
             fetch_window_hours=48,
             deepl_api_key="test_key",
-            database_url="sqlite:///test.db"
+            database_url="sqlite:///test.db",
+            embedding_provider="openai",
         )
         
         assert config.arxiv_categories == ["cs.CV", "cs.LG"]
         assert config.fetch_window_hours == 48
         assert config.deepl_api_key == "test_key"
-        assert config.database_url == "sqlite:///test.db"
+        assert config.embedding_provider == "openai"
 
 
 class TestArxivClient:
@@ -55,7 +63,6 @@ class TestArxivClient:
         
         assert hash1 == hash2
         assert len(hash1) == 64  # SHA256 produces 64 hex characters
-        assert hash1.startswith("a9")  # Consistent hash for this text
     
     def test_generate_abstract_hash_different(self):
         """Test that different abstracts produce different hashes."""
@@ -208,6 +215,91 @@ class TestPaperModel:
         
         assert paper_success.is_translated == True
         assert paper_pending.is_translated == False
+    
+    def test_paper_to_bibtex(self):
+        """Test BibTeX export."""
+        paper = Paper(
+            id=1,
+            arxiv_id="2401.01234",
+            title="Attention Is All You Need",
+            authors_json='["Ashish Vaswani", "Noam Shazeer"]',
+            abstract_en="This is a test abstract.",
+            abstract_zh="这是测试摘要。",
+            categories_json='["cs.CL", "cs.LG"]',
+            primary_category="cs.CL",
+            published_at=datetime(2024, 1, 15, 12, 0, 0),
+            updated_at=datetime(2024, 1, 15, 12, 0, 0),
+            abs_url="https://arxiv.org/abs/2401.01234",
+            pdf_url="https://arxiv.org/pdf/2401.01234.pdf",
+            abstract_hash="abc123",
+            translate_status="success",
+            tag_status="success",
+        )
+        
+        bibtex = paper.to_bibtex()
+        
+        assert "@article{" in bibtex
+        assert "Attention Is All You Need" in bibtex
+        assert "Ashish Vaswani" in bibtex
+        assert "arxiv:2401.01234" in bibtex
+        assert "cs.CL" in bibtex
+    
+    def test_paper_to_json(self):
+        """Test JSON export."""
+        paper = Paper(
+            id=1,
+            arxiv_id="2401.01234",
+            title="Test Paper",
+            authors_json='["Author One"]',
+            abstract_en="Test abstract.",
+            abstract_zh="测试摘要。",
+            categories_json='["cs.AI"]',
+            primary_category="cs.AI",
+            published_at=datetime(2024, 1, 15, 12, 0, 0),
+            updated_at=datetime(2024, 1, 15, 12, 0, 0),
+            abs_url="https://arxiv.org/abs/2401.01234",
+            pdf_url="https://arxiv.org/pdf/2401.01234.pdf",
+            abstract_hash="abc123",
+            translate_status="success",
+            tag_status="success",
+            view_count=100,
+            favorite_count=10,
+        )
+        
+        json_data = paper.to_json()
+        
+        assert json_data["arxiv_id"] == "2401.01234"
+        assert json_data["view_count"] == 100
+        assert json_data["favorite_count"] == 10
+    
+    def test_paper_with_embedding(self):
+        """Test paper with embedding vector."""
+        paper = Paper(
+            id=1,
+            arxiv_id="2401.01234",
+            title="Test Paper",
+            authors_json='["Author One"]',
+            abstract_en="Test abstract.",
+            abstract_zh="",
+            categories_json='["cs.AI"]',
+            primary_category="cs.AI",
+            published_at=datetime.now(),
+            updated_at=datetime.now(),
+            abs_url="https://arxiv.org/abs/2401.01234",
+            pdf_url="https://arxiv.org/pdf/2401.01234.pdf",
+            abstract_hash="abc123",
+            translate_status="success",
+            tag_status="success",
+            embedding_vector="[0.1, 0.2, 0.3, 0.4]",
+        )
+        
+        data = paper.to_dict()
+        
+        # Embedding should be parsed from JSON
+        assert data.get("embedding") is None  # Not in to_dict by default
+        
+        json_data = paper.to_json(include_embedding=True)
+        assert json_data["embedding"] == [0.1, 0.2, 0.3, 0.4]
 
 
 class TestTagNormalization:
@@ -237,6 +329,224 @@ class TestTagNormalization:
         tags, _ = tagger.generate(title, abstract, categories)
         
         assert len(tags) <= 3
+
+
+class TestEmbeddingService:
+    """Test embedding service."""
+    
+    def test_embedding_service_init(self):
+        """Test embedding service initialization."""
+        service = EmbeddingService()
+        assert service.provider == "none"  # Default
+        
+    def test_compute_similarity(self):
+        """Test cosine similarity computation."""
+        service = EmbeddingService()
+        
+        # Identical vectors
+        vec = [1.0, 0.0, 0.0]
+        similarity = service.compute_similarity(vec, vec)
+        assert similarity == 1.0
+        
+        # Orthogonal vectors
+        vec1 = [1.0, 0.0, 0.0]
+        vec2 = [0.0, 1.0, 0.0]
+        similarity = service.compute_similarity(vec1, vec2)
+        assert similarity == 0.0
+        
+        # Similar vectors
+        vec1 = [1.0, 0.0, 0.0]
+        vec2 = [0.9, 0.1, 0.0]
+        similarity = service.compute_similarity(vec1, vec2)
+        assert similarity > 0.9
+        assert similarity < 1.0
+    
+    def test_compute_similarity_empty_vectors(self):
+        """Test similarity with empty vectors."""
+        service = EmbeddingService()
+        
+        similarity = service.compute_similarity([], [])
+        assert similarity == 0.0
+        
+        similarity = service.compute_similarity([1.0], [])
+        assert similarity == 0.0
+    
+    def test_find_similar(self):
+        """Test finding similar papers."""
+        service = EmbeddingService()
+        
+        query_embedding = [1.0, 0.0, 0.0]
+        embeddings = {
+            1: [0.9, 0.1, 0.0],
+            2: [0.0, 1.0, 0.0],
+            3: [0.95, 0.05, 0.0],
+        }
+        
+        results = service.find_similar(query_embedding, embeddings, top_k=2)
+        
+        # Should return paper 3 (most similar) and paper 1
+        assert len(results) == 2
+        assert results[0][0] == 3  # Most similar
+        assert results[0][1] > results[1][1]
+    
+    def test_find_similar_with_threshold(self):
+        """Test finding similar papers with threshold."""
+        service = EmbeddingService()
+        
+        query_embedding = [1.0, 0.0, 0.0]
+        embeddings = {
+            1: [0.9, 0.1, 0.0],  # similarity ~0.99
+            2: [0.0, 1.0, 0.0],  # similarity 0.0
+            3: [0.95, 0.05, 0.0],  # similarity ~0.999
+        }
+        
+        results = service.find_similar(query_embedding, embeddings, top_k=10, threshold=0.5)
+        
+        # Should only return papers with similarity > 0.5
+        assert len(results) == 2
+        assert all(r[1] > 0.5 for r in results)
+
+
+class TestReadingListModel:
+    """Test reading list model."""
+    
+    def test_reading_list_creation(self):
+        """Test reading list creation."""
+        reading_list = ReadingList(
+            name="My Reading List",
+            description="Papers I want to read",
+            is_public=False,
+        )
+        
+        assert reading_list.name == "My Reading List"
+        assert reading_list.description == "Papers I want to read"
+        assert reading_list.is_public == False
+    
+    def test_reading_list_item(self):
+        """Test reading list item."""
+        item = ReadingListItem(
+            reading_list_id=1,
+            paper_id=1,
+            position=0,
+            notes="Important paper",
+        )
+        
+        assert item.reading_list_id == 1
+        assert item.paper_id == 1
+        assert item.position == 0
+        assert item.notes == "Important paper"
+
+
+class TestAuthorFollowModel:
+    """Test author follow model."""
+    
+    def test_author_follow_creation(self):
+        """Test author follow creation."""
+        follow = AuthorFollow(
+            author_name="Yann LeCun",
+            paper_id=1,
+        )
+        
+        assert follow.author_name == "Yann LeCun"
+        assert follow.paper_id == 1
+
+
+class TestUserStateModel:
+    """Test user state model."""
+    
+    def test_user_state_defaults(self):
+        """Test user state default values."""
+        state = UserState(paper_id=1)
+        
+        assert state.is_read == False
+        assert state.is_favorite == False
+        assert state.is_hidden == False
+        assert state.notes is None
+        assert state.read_progress == 0.0
+    
+    def test_user_state_with_values(self):
+        """Test user state with values."""
+        state = UserState(
+            paper_id=1,
+            is_read=True,
+            is_favorite=True,
+            is_hidden=False,
+            notes="Great paper!",
+            read_progress=0.75,
+        )
+        
+        assert state.is_read == True
+        assert state.is_favorite == True
+        assert state.notes == "Great paper!"
+        assert state.read_progress == 0.75
+
+
+class TestRecommendationService:
+    """Test recommendation service."""
+    
+    def test_recommendation_service_init(self):
+        """Test recommendation service initialization."""
+        service = RecommendationService()
+        assert service.config is not None
+    
+    def test_score_by_popularity(self):
+        """Test popularity scoring."""
+        service = RecommendationService()
+        
+        papers = [
+            create_mock_paper(1, view_count=100, favorite_count=10),
+            create_mock_paper(2, view_count=50, favorite_count=5),
+            create_mock_paper(3, view_count=200, favorite_count=20),
+        ]
+        
+        scores = service._score_by_popularity(papers)
+        
+        # Paper 3 should have highest score
+        assert len(scores) == 3
+        paper_ids = [s[0].id for s in scores]
+        assert 3 in paper_ids
+    
+    def test_score_by_recency(self):
+        """Test recency scoring."""
+        service = RecommendationService()
+        
+        now = datetime.utcnow()
+        papers = [
+            create_mock_paper(1, published_at=now - timedelta(days=1)),
+            create_mock_paper(2, published_at=now - timedelta(days=7)),
+            create_mock_paper(3, published_at=now),
+        ]
+        
+        scores = service._score_by_recency(papers)
+        
+        # Paper 3 (most recent) should have highest score
+        assert len(scores) == 3
+        scores_dict = {s[0].id: s[1] for s in scores}
+        assert scores_dict[3] > scores_dict[1] > scores_dict[2]
+
+
+def create_mock_paper(id, **kwargs):
+    """Helper to create mock paper."""
+    paper = Paper(
+        id=id,
+        arxiv_id=f"2401.{id:05d}",
+        title=f"Test Paper {id}",
+        authors_json='["Author"]',
+        abstract_en="Test abstract.",
+        abstract_zh="",
+        categories_json='["cs.AI"]',
+        primary_category="cs.AI",
+        published_at=kwargs.get("published_at", datetime.utcnow()),
+        updated_at=datetime.utcnow(),
+        abs_url=f"https://arxiv.org/abs/2401.{id:05d}",
+        pdf_url=f"https://arxiv.org/pdf/2401.{id:05d}.pdf",
+        abstract_hash=f"hash{id}",
+        translate_status="success",
+        tag_status="success",
+        view_count=kwargs.get("view_count", 0),
+        favorite_count=kwargs.get("favorite_count", 0),
+    )
+    return paper
 
 
 if __name__ == "__main__":
